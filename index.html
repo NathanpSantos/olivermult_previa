@@ -79,6 +79,7 @@
     .card:hover { border-color: #a6c7c5; }
     .photo { display: grid; place-items: center; aspect-ratio: 1.18; background: #ebf2f1; overflow: hidden; border-bottom: 1px solid var(--line); }
     .gallery { position: relative; }
+    .photo:has(> img) { touch-action: pan-y pinch-zoom; }
     .gallery-media { width: 100%; height: 100%; min-width: 0; min-height: 0; grid-area: 1/1; object-fit: contain; background: white; }
     .gallery-controls { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 3px 8px; border-bottom: 1px solid var(--line); background: white; }
     .gallery-controls button { color: var(--teal); font-size: .875rem; font-weight: 750; border: 0; background: transparent; border-radius: 7px; padding: 6px 4px; min-height: 44px; }
@@ -87,7 +88,6 @@
     .gallery-video-link { display: block; padding: 7px 10px; text-align: center; font-weight: 700; font-size: .875rem; color: var(--teal); border-bottom: 1px solid var(--line); }
     .gallery-video-link:hover { text-decoration: underline; }
     .photo > a { grid-area: 1/1; z-index: 1; padding: 10px; color: var(--teal); font-size: .875rem; font-weight: 700; text-align: center; text-decoration: underline; }
-    .photo img { width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: contain; background: white; }
     .card-body { flex: 1; display: flex; flex-direction: column; padding: 16px; }
     .category { color: var(--teal); font-size: .875rem; font-weight: 750; }
     .card h3 { font-size: 1.16rem; line-height: 1.23; letter-spacing: -.035em; margin-top: 4px; }
@@ -104,6 +104,7 @@
     .snippet { padding: 12px; border-radius: 8px; margin-top: 8px; background: var(--paper); border: 1px solid var(--line); }
     .snippet strong { color: #234e93; }
     dialog { width: min(92%, 510px); max-height: 90vh; padding: 0; border: 1px solid var(--line); color: var(--ink); border-radius: 16px; background: white; }
+    @supports (height: 1dvh) { dialog { max-height: 90dvh; } }
     dialog::backdrop { background: #071f2bd1; }
     .dialog-head { display: flex; justify-content: space-between; gap: 18px; align-items: center; padding: 12px 18px; border-bottom: 1px solid var(--line); }
     .dialog-head form { margin: 0; }
@@ -116,18 +117,19 @@
     }
     @media (max-width: 690px) {
       .wrap { width: calc(100% - 32px); }
+      h1 { font-size: clamp(2.25rem, 9.8vw, 3.3rem); }
       .header-row { min-height: 64px; }
       .nav { gap: 12px; }
-      .nav a { font-size: .82rem; }
+      .nav a { display: inline-flex; min-height: 44px; align-items: center; font-size: .875rem; }
       .nav .store { padding: 8px; }
       .brand { gap: 7px; font-size: 1rem; }
       .brand img { width: 34px; height: 34px; border-radius: 8px; }
       .hero-row { grid-template-columns: 1fr; gap: 21px; padding-block: 32px 24px; }
       .hero-copy p { margin-block: 13px 16px; }
-      .feature { display: grid; grid-template-columns: 100px 1fr; width: 100%; justify-self: stretch; gap: 9px; padding: 8px; border-radius: 13px; }
+      .feature { display: grid; grid-template-columns: minmax(70px, 26%) minmax(0, 1fr); width: 100%; justify-self: stretch; gap: 9px; padding: 8px; border-radius: 13px; }
       .feature img { height: 90px; border-radius: 9px; }
       .feature figcaption { padding: 3px; }
-      .feature .button { min-height: 42px; padding: 6px 9px; font-size: .84rem; }
+      .feature .button { min-height: 44px; padding: 6px 9px; font-size: .875rem; }
       .catalog { padding-block: 34px 40px; }
       .catalog-head, .footer-row { flex-direction: column; align-items: stretch; gap: 14px; }
       .search { width: 100%; }
@@ -136,14 +138,24 @@
       .card-body { padding: 11px; }
       .card h3 { font-size: 1rem; }
       .description { font-size: .875rem; margin-bottom: 12px; }
-      .card .button { padding-inline: 7px; font-size: .84rem; }
+      .card .button { padding-inline: 8px; font-size: .9rem; }
+      .gallery-controls button { padding-inline: 8px; }
+      .dialog-body .button { width: 100%; min-height: 48px; }
       .footer-row > .button { align-self: start; }
+    }
+    @media (max-width: 480px) {
+      .grid { grid-template-columns: 1fr; gap: 16px; }
+      .card-body { padding: 16px; }
+      .card h3 { font-size: 1.18rem; }
+      .description { font-size: .95rem; }
+      .card .button { min-height: 48px; }
+      .gallery-controls { padding-inline: 12px; }
+      .gallery-controls button { min-width: 68px; min-height: 48px; }
+      .gallery-video-link { padding-block: 12px; }
     }
     @media (max-width: 360px) {
       .nav > a:first-child { display: none; }
-      .feature img { height: 92px; }
       .feature figcaption { flex-wrap: wrap; gap: 5px; }
-      .grid { grid-template-columns: 1fr; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -395,6 +407,25 @@
         position.textContent = (current + 1) + ' / ' + slides.length;
         monitorMedia(media);
       }
+
+      let touchStart = null;
+      mediaSlot.addEventListener('touchstart', event => {
+        touchStart = event.touches.length === 1 && event.target === media && media instanceof HTMLImageElement
+          ? event.touches[0]
+          : null;
+      }, { passive: true });
+      mediaSlot.addEventListener('touchcancel', () => { touchStart = null; }, { passive: true });
+      mediaSlot.addEventListener('touchend', event => {
+        const start = touchStart;
+        touchStart = null;
+        if (!start || event.touches.length || event.changedTouches.length !== 1) return;
+        const end = event.changedTouches[0];
+        const horizontal = end.clientX - start.clientX;
+        const vertical = end.clientY - start.clientY;
+        if (Math.abs(horizontal) >= 42 && Math.abs(horizontal) > Math.abs(vertical) * 1.4) {
+          moveSlide(horizontal < 0 ? 1 : -1);
+        }
+      }, { passive: true });
 
       monitorMedia(media);
       gallery.querySelector('.previous').addEventListener('click', () => moveSlide(-1));
